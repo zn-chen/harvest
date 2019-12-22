@@ -1,0 +1,114 @@
+package main
+
+import (
+    "fmt"
+    "os/exec"
+    "os"
+
+    // "gopkg.in/ini.v1"
+    // "harvest/util"
+)
+
+func main()  {
+    // fmt.Println("test")
+    // process := exec.Command("ping www.baidu.com")
+    // process.Run()
+    // bufReader, err := process.StdoutPipe()
+    // if err != nil {
+    //     fmt.Println(err)
+    // }
+    // func() {
+	// 	var buffer []byte = make([]byte, 4096)
+	// 	for {
+    //         n, err := bufReader.Read(buffer)
+	// 		if err != nil {
+	// 			if err == io.EOF {
+	// 				fmt.Printf("pipi has Closed\n")
+	// 				break
+	// 			} else {
+	// 				fmt.Println("Read content failed")
+	// 			}
+	// 		}
+	// 		fmt.Print(string(buffer[:n]))
+	// 	}
+    // }()
+    // time.Sleep(10 * time.Second)
+    // _ = RunCommand("ping", "www.baidu.com")
+    f,err := os.Create("test")
+    defer f.Close()
+    if err != nil{
+		return
+    }
+    f.WriteString("test")
+}
+
+func RunCommand(name string, arg ...string) error {
+	cmd := exec.Command(name, arg...)
+    // 命令的错误输出和标准输出都连接到同一个管道
+    stdout, err := cmd.StdoutPipe()
+	// cmd.Stderr = cmd.Stdout
+
+	if err != nil {
+		return err
+	}
+
+	if err = cmd.Start(); err != nil {
+		return err
+	}
+    // 从管道中实时获取输出并打印到终端
+	for {
+		tmp := make([]byte, 1024)
+		_, err := stdout.Read(tmp)
+		fmt.Print(string(tmp))
+		if err != nil {
+			break
+		}
+	}
+
+	if err = cmd.Wait(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// func main() {
+//     _, err := util.ConfigInit("/opt/harvest/config.ini")
+//     if err != nil {
+//         fmt.Println(err)
+//     }
+
+//     config, err := util.GetConfig()
+//     if err != nil {
+//         fmt.Println(err)
+//     }
+
+//     fmt.Println(config.Section("RabbitMQ").Key("username").String())
+    
+    // cfg, err := ini.Load("/opt/harvest/config.ini")
+    // if err != nil {
+    //     fmt.Printf("Fail to read file: %v", err)
+    //     os.Exit(1)
+    // }
+
+	// fmt.Println(cfg.Section("RabbitMQ").Key("username").String())
+	// fmt.Println(cfg.Section("RabbitMQ").Key("password").In("test", []string{"123", "test"}))
+
+    // // 典型读取操作，默认分区可以使用空字符串表示
+    // fmt.Println("App Mode:", cfg.Section("").Key("app_mode").String())
+    // fmt.Println("Data Path:", cfg.Section("paths").Key("data").String())
+
+    // // 我们可以做一些候选值限制的操作
+    // fmt.Println("Server Protocol:",
+    //     cfg.Section("server").Key("protocol").In("http", []string{"http", "https"}))
+    // // 如果读取的值不在候选列表内，则会回退使用提供的默认值
+    // fmt.Println("Email Protocol:",
+    //     cfg.Section("server").Key("protocol").In("smtp", []string{"imap", "smtp"}))
+
+    // // 试一试自动类型转换
+    // fmt.Printf("Port Number: (%[1]T) %[1]d\n", cfg.Section("server").Key("http_port").MustInt(9999))
+    // fmt.Printf("Enforce Domain: (%[1]T) %[1]v\n", cfg.Section("server").Key("enforce_domain").MustBool(false))
+    
+    // // 差不多了，修改某个值然后进行保存
+    // cfg.Section("").Key("app_mode").SetValue("production")
+    // cfg.SaveTo("my.ini.local")
+// }

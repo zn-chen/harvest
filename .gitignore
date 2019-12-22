@@ -4,3 +4,6 @@
 # go
 go.mod
 go.sum
+
+# log
+.log
