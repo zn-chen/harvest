@@ -6,4 +6,7 @@ go.mod
 go.sum
 
 # log
-.log
+*.log
+
+# dev
+*.dev
