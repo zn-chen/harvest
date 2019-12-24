@@ -7,11 +7,15 @@ import (
 	"os/user"
 	"strconv"
 	"syscall"
+
+	logger "github.com/sirupsen/logrus"
+
+	"harvest/util"
 )
 
 //Watcher 进程托管
 type Watcher struct {
-	runing        bool
+	breakEvent    *util.Event
 	tryRestartNum int
 	cmd           string
 	directory     string
@@ -56,7 +60,7 @@ func NewWatcher(cmd string, arg []string, tryNum int, stderrFile, stdoutFile, di
 	}
 
 	return &Watcher{
-		runing:        false,
+		breakEvent:    util.NewEvent(),
 		tryRestartNum: tryNum,
 		cmd:           cmd,
 		directory:     directory,
@@ -67,16 +71,21 @@ func NewWatcher(cmd string, arg []string, tryNum int, stderrFile, stdoutFile, di
 
 //Start 运行托管程序
 func (w *Watcher) Start(callback func()) error {
-	w.runing = true
+	logger.Info("Watcher start")
+	w.breakEvent.Clear()
 	var err error
-	for w.runing {
+	for !w.breakEvent.IsSet() {
 		err = w.tryRestart()
 		if err != nil {
 			break
 		}
-		w.Process.Wait()
+		err = w.Process.Wait()
+		if err == nil {
+			break
+		}
 	}
-	w.runing = false
+	w.breakEvent.Set()
+	logger.Info("Child process exit")
 	callback()
 	return err
 }
@@ -84,7 +93,7 @@ func (w *Watcher) Start(callback func()) error {
 func (w *Watcher) tryRestart() error {
 	var i int
 	var err error
-	for i = 0; i < w.tryRestartNum && w.runing; i++ {
+	for i = 0; i < w.tryRestartNum && !w.breakEvent.IsSet(); i++ {
 		err = w.Process.Start()
 		if err == nil {
 			break
@@ -99,6 +108,8 @@ func (w *Watcher) tryRestart() error {
 
 //Stop 停止托管
 func (w *Watcher) Stop() {
-	w.runing = false
+	w.breakEvent.Set()
 	w.Process.Process.Signal(syscall.SIGINT)
+	logger.Debug("Send SIGINT to child process")
+	w.breakEvent.Wait()
 }
