@@ -8,7 +8,7 @@ import (
 	"sync"
 )
 
-// A session keeps track of whether or not a connection session has been
+//Session A session keeps track of whether or not a connection session has been
 // authenticated.  Also tracks the identity of the connection.
 type Session struct {
 	Authenticated bool
@@ -18,6 +18,7 @@ type Session struct {
 	Nonce         []byte
 }
 
+// NewSession 创建一个新的session
 func NewSession(conn *net.TCPConn) *Session {
 	return &Session{Authenticated: false, Conn: conn, Identity: nil}
 }

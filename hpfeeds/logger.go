@@ -4,8 +4,10 @@ import (
 	"fmt"
 )
 
+//Logger 日志接口类
 type Logger func(...interface{})
 
+//SetDebugLogger 设置debug等级日志
 func (b *Broker) SetDebugLogger(logger Logger) {
 	b.debugLogger = logger
 }
@@ -23,6 +25,7 @@ func (b *Broker) logDebugf(format string, args ...interface{}) {
 	}
 }
 
+//SetErrorLogger 设置error等级日志
 func (b *Broker) SetErrorLogger(logger Logger) {
 	b.errorLogger = logger
 }
@@ -40,6 +43,7 @@ func (b *Broker) logErrorf(format string, args ...interface{}) {
 	}
 }
 
+//SetInfoLogger 设置info等级日志
 func (b *Broker) SetInfoLogger(logger Logger) {
 	b.infoLogger = logger
 }
