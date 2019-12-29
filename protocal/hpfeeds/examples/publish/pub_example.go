@@ -12,8 +12,8 @@ func main() {
 
 	host := "127.0.0.1"
 	port := 10000
-	ident := "test_ident"
-	auth := "test_secret"
+	ident := "admin"
+	auth := "admin"
 
 	hp := hpfeeds.NewClient(host, port, ident, auth)
 	hp.Log = true
@@ -21,7 +21,7 @@ func main() {
 
 	// Publish something on "flotest" every second
 	channel1 := make(chan []byte)
-	hp.Publish("test_channel", channel1)
+	hp.Publish("pub", channel1)
 	go func() {
 		for {
 			fmt.Println("Sending test_data")

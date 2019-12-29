@@ -34,6 +34,7 @@ type Broker struct {
 	DB          Identifier
 	subMutex    sync.RWMutex
 	subscribers map[string][]*Session
+	localSubscribers map[string][]*chan []byte
 
 	clientCount int
 	countMutex  sync.RWMutex
@@ -68,8 +69,19 @@ func (b *Broker) ListenAndServe() error {
 	}
 
 	b.subscribers = make(map[string][]*Session)
+	b.localSubscribers = make(map[string][]*chan []byte)
 
 	return b.serve(ln.(*net.TCPListener))
+}
+
+//LocalSubesriber 本地订阅,订阅一个频道并返回一个用于接收数据的管道
+func (b *Broker)LocalSubesriber(channel string) chan []byte {
+	payloadChan := make(chan []byte)
+	if b.localSubscribers[channel] == nil {
+		b.localSubscribers[channel] = make([]*chan []byte, 0)
+	}
+	b.localSubscribers[channel] = append(b.localSubscribers[channel], &payloadChan)
+	return payloadChan
 }
 
 func (b *Broker) serve(ln *net.TCPListener) error {
@@ -254,9 +266,14 @@ func (b *Broker) sendToChannel(name string, channel string, payload []byte) {
 
 	b.subMutex.RLock()
 	sessions := b.subscribers[channel]
+	localSessions := b.localSubscribers[channel]
 
 	prune := false
 
+	for _, s := range localSessions {
+		*s <- payload
+	}
+	
 	for _, s := range sessions {
 		err := s.sendRawMessage(OpPublish, buf.Bytes())
 		if err != nil {
