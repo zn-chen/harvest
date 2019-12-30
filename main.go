@@ -23,37 +23,40 @@ var levelMap = map[string]logger.Level{
 }
 
 func main() {
-	var wt *watcher.Watcher
-	setupCloseHandler(func() {
-		wt.Stop()
-	})
+	//注册退出signal
+	setupCloseHandler(func() {})
 
+	//初始化配置文件
 	util.ConfigInit("./config.ini")
 	conf, _ := util.GetConfig()
 
-	logInt(levelMap[strings.ToUpper(conf.Section("Harvest").Key("level").MustString("INFO"))])
-	logger.Info("Harvest process start")
+	//初始化日志
+	logInit(levelMap[strings.ToUpper(conf.Section("Harvest").Key("level").MustString("INFO"))])
 
-	wt, err := watcher.NewWatcher(
-		"ping",
-		[]string{"www.baidu.com"},
-		10,
-		"stderr_log.log",
-		"stdout_log.log",
-		"",
-		"cowrie",
+	//启动进程托管
+	commond := strings.Split(conf.Section("Wather").Key("cmd").String(), " ")
+	tryNum, _ := conf.Section("Wather").Key("try_num").Int()
+	w, err := watcher.NewWatcher(
+		commond[0],
+		commond[1:],
+		tryNum,
+		conf.Section("Wather").Key("stderr").String(),
+		conf.Section("Wather").Key("stdout").String(),
+		conf.Section("Wather").Key("directory").String(),
+		conf.Section("Wather").Key("user").String(),
 	)
+	defer w.Stop()
 	if err != nil {
-		fmt.Println(err)
+		logger.Errorln("Watcher faild: %s", err)
 	}
 
-	go wt.Start(func() {})
-	time.Sleep(time.Second * 10)
-	wt.Stop()
-	time.Sleep(time.Second * 10)
+	go w.Start(func() {})
+	logger.Infoln("Watcher running")
+
+	logger.Info("Harvest process start")
 }
 
-func logInt(level logger.Level) {
+func logInit(level logger.Level) {
 	logger.SetLevel(level)
 	logger.SetOutput(os.Stdout)
 	logger.SetFormatter(&logger.TextFormatter{
