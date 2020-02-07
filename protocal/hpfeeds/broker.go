@@ -64,12 +64,6 @@ func ListenAndServe(name string, port int, db Identifier) error {
 
 // ListenAndServe starts a TCP listener and begins listening for incoming connections.
 func (b *Broker) ListenAndServe() error {
-	// TODO: Create a debug log function to call to pretty print this.
-	logger.Debug("ListenAndServe with Broker:\n")
-	logger.Debugf("\tb.Name: %s\n", b.Name)
-	logger.Debugf("\tb.Port: %d\n", b.Port)
-	logger.Debugf("\tb.DB: %#v\n", b.DB)
-
 	if b.DB == nil {
 		return ErrNilDB
 	}
@@ -93,7 +87,7 @@ func (b *Broker)LocalSubesriber(channel string) chan []byte {
 }
 
 func (b *Broker) serve(ln *net.TCPListener) error {
-	logger.Infof("Now serving hpfeeds on port %d\n", b.Port)
+	logger.Infof("Now serving hpfeeds on  %s:%d\n", b.Host, b.Port)
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
@@ -222,10 +216,7 @@ func (b *Broker) parse(s *Session, opcode uint8, data []byte) {
 }
 
 func (b *Broker) handleSub(s *Session, name, channel string) {
-	// logger.Debug("handleSub")
-	// logger.Debugf("\tAuthenticated? %t\n", s.Authenticated)
-	// logger.Debugf("\tName: %s\n", name)
-	// logger.Debugf("\tChannel: %s\n", channel)
+	logger.Debugf("Sub message Authenticated:%t Channle:%s Name:%s\n", s.Authenticated, name, channel)
 	if !s.Authenticated {
 		s.sendAuthErr()
 		return
@@ -246,11 +237,7 @@ func (b *Broker) handleSub(s *Session, name, channel string) {
 }
 
 func (b *Broker) handlePub(s *Session, name string, channel string, payload []byte) {
-	// logger.Debug("handlePub")
-	// logger.Debugf("\tAuthenticated? %t\n", s.Authenticated)
-	// logger.Debugf("\tName: %s\n", name)
-	// logger.Debugf("\tChannel: %s\n", channel)
-	// logger.Debugf("\tPayload: %x\n", payload)
+	logger.Debugf("Pub message Authenticated:%t Name:%s Channel:%s Payload:%s", s.Authenticated, name, channel, payload)
 	if !s.Authenticated {
 		s.sendAuthErr()
 		return

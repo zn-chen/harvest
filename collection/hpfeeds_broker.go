@@ -12,7 +12,7 @@ import (
 // hpfeed消息采集器,在本地运行一个单用户的hpfeed broker服务，用于接收支持hpfeeds消息格式的蜜罐
 
 //RunHpfeedsBrokers 运行hpfeedsBroker实例
-func RunHpfeedsBrokers(host string, port int, ident string, pwd string, channel string) chan []byte {
+func RunHpfeedsBrokers(host string, port int, ident string, pwd string, channel string) (chan []byte, *hpfeeds.Broker) {
 	db := NewDB(ident, pwd, channel)
 	b := hpfeeds.NewBroker(
 		host, 
@@ -24,7 +24,7 @@ func RunHpfeedsBrokers(host string, port int, ident string, pwd string, channel 
 	hpfeedChannel := b.LocalSubesriber(channel)
 	
 	go b.ListenAndServe()
-	return hpfeedChannel
+	return hpfeedChannel, b
 }
 
 // AuthDB 认证接口
