@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"harvest/watcher"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -11,8 +14,8 @@ import (
 
 	logger "github.com/sirupsen/logrus"
 
-	"harvest/util"
 	"harvest/collection"
+	"harvest/util"
 )
 
 var levelMap = map[string]logger.Level{
@@ -22,6 +25,17 @@ var levelMap = map[string]logger.Level{
 	"DEBUG": logger.DebugLevel,
 	"ERROR": logger.ErrorLevel,
 }
+
+//Ident 节点标识
+var Ident string
+//NodeName 节点名称
+var NodeName string
+// ServerHost 中心地址
+var ServerHost string
+// ServerPort 中心服务端口
+var ServerPort int
+// Describe 节点描述
+var Describe string
 
 func main() {
 	//注册退出signal
@@ -33,6 +47,13 @@ func main() {
 
 	//初始化日志
 	logInit(levelMap[strings.ToUpper(conf.Section("Harvest").Key("level").MustString("INFO"))])
+
+	// 初始化公共变量
+	Ident = conf.Section("Harvest").Key("ident").MustString("0000000000000000")
+	NodeName = conf.Section("Harvest").Key("name").MustString("uname")
+	ServerHost = conf.Section("Server").Key("host").MustString("127.0.0.1")
+	ServerPort = conf.Section("Server").Key("port").MustInt(80)
+	Describe = conf.Section("Server").Key("describe").MustString("")
 
 	//启动hpfeed服务
 	hpSection := conf.Section("HpfeedBroker")
@@ -52,15 +73,15 @@ func main() {
 	// 启动rabbitmq客户端
 	hpSection = conf.Section("RabbitMQ")
 	rabbitmqChannel, err := ConnectionRabbitMQ(
-		hpSection.Key("host").MustString("127.0.0.1"), 
-		hpSection.Key("port").MustInt(5672), 
-		"message", 
-		"", 
-		hpSection.Key("username").MustString("admin"), 
-		hpSection.Key("password").MustString("admin"), 
-		"my_vhost",
+		hpSection.Key("host").MustString("127.0.0.1"),
+		hpSection.Key("port").MustInt(5672),
+		"collector",
+		"",
+		hpSection.Key("username").MustString("admin"),
+		hpSection.Key("password").MustString("admin"),
+		"message",
 	)
-	if err != nil{
+	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
@@ -85,6 +106,18 @@ func main() {
 		logger.Errorln("Watcher faild:", err.Error())
 		os.Exit(1)
 	}
+
+	//向中心注册节点
+	register(
+		Ident,
+		NodeName,
+		ServerHost,
+		ServerPort,
+		Describe,
+	)
+	// 开始发送心跳
+	go beat()
+
 	w.Start(func() {})
 	logger.Infoln("Watcher running")
 
@@ -112,8 +145,66 @@ func setupCloseHandler(callback func()) {
 }
 
 // dataPublish 从hpfeed服务器中读取消息，发送到rabbitmq的指定队列中
-func dataPublish(dataChannel chan []byte, rabbitmqChannel *Client){
+func dataPublish(dataChannel chan []byte, rabbitmqChannel *Client) {
 	for data := range dataChannel {
+		data, err := normalize(data)
+		if err != nil {
+			logger.Errorf("Data normalize error %s", err)
+		}
 		rabbitmqChannel.Publish(data)
+	}
+}
+
+// RegisterPost 注册用的post
+type RegisterPost struct {
+	Ident    string `json:"ident"`
+	Name     string `json:"name"`
+	Addr     string `json:"addr"`
+	Port     int    `json:"port"`
+	Describe string `json:"describe"`
+}
+
+// 向中心注册节点
+func register(ident string, name string, addr string, port int, describe string) {
+	data := RegisterPost{
+		ident,
+		name,
+		addr,
+		port,
+		describe,
+	}
+	url := fmt.Sprintf("http://%s:%d/api/v1.0/nodes", ServerHost, ServerPort)
+	byteData, _ := json.Marshal(data)
+	reader := bytes.NewReader(byteData)
+
+	resp, err := http.Post(url, "application/json", reader)
+	if err != nil {
+		logger.Errorf("Regist faild %s", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		logger.Errorf("Regist Faild code %d", resp.StatusCode)
+	} else {
+		logger.Infof("Regist success")
+	}
+}
+
+// 心跳任务
+func beat() {
+	for {
+		resp, err := http.Get(fmt.Sprintf("http://%s:%d/api/v1.0/beat/%s", ServerHost, ServerPort, Ident))
+		if err != nil {
+			logger.Errorf("Beat request Faild code %s", err)
+		}
+		resp.Body.Close()
+
+		if resp.StatusCode != 200 {
+			logger.Errorf("Beat request Faild code %d", resp.StatusCode)
+		} else {
+			logger.Debugf("Beat request success")
+		}
+
+		time.Sleep(30 * time.Second)
 	}
 }
