@@ -36,6 +36,10 @@ var ServerHost string
 var ServerPort int
 // Describe 节点描述
 var Describe string
+// HoneypotHost 蜜罐地址
+var HoneypotHost string
+// HoneypotPort 蜜罐服务端口
+var HoneypotPort int
 
 func main() {
 	//注册退出signal
@@ -53,7 +57,9 @@ func main() {
 	NodeName = conf.Section("Harvest").Key("name").MustString("uname")
 	ServerHost = conf.Section("Server").Key("host").MustString("127.0.0.1")
 	ServerPort = conf.Section("Server").Key("port").MustInt(80)
-	Describe = conf.Section("Server").Key("describe").MustString("")
+	Describe = conf.Section("Harvest").Key("describe").MustString("")
+	HoneypotHost = conf.Section("Harvest").Key("honeypot_host").MustString("-1:-1:-1:-1")
+	HoneypotPort = conf.Section("Harvest").Key("honeypot_port").MustInt(-1)
 
 	//启动hpfeed服务
 	hpSection := conf.Section("HpfeedBroker")
@@ -111,8 +117,8 @@ func main() {
 	register(
 		Ident,
 		NodeName,
-		ServerHost,
-		ServerPort,
+		HoneypotHost,
+		HoneypotPort,
 		Describe,
 	)
 	// 开始发送心跳
